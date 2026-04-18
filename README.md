@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Plant disease classification API
 
 REST API for **disease-only** plant image classification using an **Ultralytics YOLO classification** model. Inference runs on your own hardware or cloud instance; weights are loaded from **Hugging Face** (cached after the first download).
@@ -117,3 +118,15 @@ If the Space still reports **out of memory**, try a **CPU upgrade** in the Space
 | 502 or timeout on first prediction | Add `HF_TOKEN`; use the build command with `prefetch_weights.py`; allow extra time after cold start on free tiers. |
 | Process killed / out of memory | PyTorch and the model may exceed small instances; use a plan with more RAM or a smaller model. |
 | Ultralytics config directory warning | Harmless fallback to `/tmp`; optionally set `YOLO_CONFIG_DIR` to a writable path (e.g. `/tmp/Ultralytics`). |
+=======
+---
+title: Plant Disease Api
+emoji: 📉
+colorFrom: purple
+colorTo: gray
+sdk: docker
+pinned: false
+---
+
+Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
+>>>>>>> cff3695ec2b2caefd50e9a55116a0ea21bb46c51
