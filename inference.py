@@ -2,9 +2,14 @@
 Local YOLO classification inference. Keeps disease labels only (from the model / label map).
 """
 
+import os
+
+# Small hosts (e.g. Render free) behave better with fewer BLAS threads
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+
 import io
 import json
-import os
 import sys
 import threading
 from pathlib import Path

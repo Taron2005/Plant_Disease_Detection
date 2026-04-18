@@ -11,6 +11,8 @@ Weights are loaded **only from Hugging Face** (downloaded once into the HF cache
 ├── inference.py        # HF download + YOLO cls + top-k disease names
 ├── requirements.txt
 ├── Procfile            # Render / similar — uvicorn
+├── scripts/
+│   └── prefetch_weights.py   # optional: run at Render build to cache HF weights
 ├── notebooks/
 │   └── Yolo_on_metric_dataset.ipynb
 └── README.md
@@ -48,8 +50,14 @@ Use your real repo id and the **exact** filename from the model’s **Files** ta
 
 ## Deploy (e.g. Render)
 
-1. **Environment** tab on the Web Service: add **`HF_MODEL_REPO`**, **`HF_MODEL_FILENAME`** (and **`HF_TOKEN`** if the HF repo is private). If these are missing, startup fails — the app has no local weights.
-2. **Start command:** `uvicorn app:app --host 0.0.0.0 --port $PORT` or rely on the **`Procfile`** (uses `$PORT` as Render expects).
+1. **Environment:** **`HF_MODEL_REPO`**, **`HF_MODEL_FILENAME`**, and **`HF_TOKEN`** (HF token = faster downloads, fewer 502s — create at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)).
+2. **Build command** (important — downloads weights *during build* so `/predict` is not doing a long download behind a short gateway timeout):
+
+   `pip install -r requirements.txt && python scripts/prefetch_weights.py`
+
+3. **Start command:** `uvicorn app:app --host 0.0.0.0 --port $PORT` or use the **`Procfile`**.
+
+If **`HF_MODEL_REPO`** is not set during build, prefetch skips (no error); for production you should have the same env vars for **build** and **runtime** on Render.
 
 ### If you see “Application startup failed” on Render
 
@@ -61,7 +69,15 @@ Use your real repo id and the **exact** filename from the model’s **Files** ta
 
 ### “No open ports detected”
 
-Render looks for a listening port **soon** after start. Loading the model at startup (HF download + PyTorch) can take minutes and **blocks** the server from opening the port. This app **loads the model on the first `/predict` request** instead, so the port opens quickly and deploy checks pass. The **first** prediction may take a while (download + load).
+This app **does not** load the heavy model at process start; the port opens quickly. Use the **build command** above so the weight file is cached before runtime.
+
+### 502 on `/predict` (keeps happening)
+
+| Cause | What to do |
+|--------|------------|
+| **Gateway timeout** while downloading weights on first request | Use **`HF_TOKEN`**, set **build command** with **`prefetch_weights.py`**, redeploy. |
+| **Out of memory** (PyTorch + YOLO) | Check logs for `Killed` / OOM → **upgrade** Render instance (free 512 MB is often too small). |
+| **Cold sleep** | First request after idle can be slow — wait and retry **`/health`** then **`/predict`**. |
 
 ---
 
