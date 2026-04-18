@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 *.py[cod]
+*.egg-info/
 .venv/
 venv/
 .env
@@ -14,6 +15,11 @@ venv/
 Thumbs.db
 .idea/
 .vscode/
+.cursor/
 
 # Hugging Face cache (local download cache)
 .cache/
+
+# Model weights (host on Hugging Face; do not commit)
+*.pt
+*.pth

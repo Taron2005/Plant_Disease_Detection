@@ -16,6 +16,7 @@ REST API for **disease-only** plant image classification using an **Ultralytics 
 | `inference.py` | Model loading (Hugging Face) and inference |
 | `requirements.txt` | Python dependencies |
 | `Procfile` | Process definition for platforms like Render (`uvicorn` on `$PORT`) |
+| `Dockerfile` | Container image for Hugging Face Spaces or other Docker hosts |
 | `scripts/prefetch_weights.py` | Optional build step to download weights before the web server starts |
 | `notebooks/` | Training and dataset preparation notebook |
 
@@ -90,6 +91,21 @@ Label strings match the classes used when the model was trained.
    Or rely on the included **`Procfile`** if the platform supports it.
 
 5. After deploy, the interactive documentation is at **`https://<your-host>/docs`**.
+
+### Hugging Face Spaces (Docker)
+
+Free CPU Spaces often give **more RAM** than small free tiers on some other hosts, which helps PyTorch + YOLO. Limits depend on Hugging Face’s current policy.
+
+1. Create a **new Space** → choose **Docker** (not Gradio).
+2. Point the Space at this GitHub repository (or push this repo to Hugging Face).
+3. Open **Settings → Variables and secrets** and add:
+   - `HF_MODEL_REPO`
+   - `HF_MODEL_FILENAME`
+   - `HF_TOKEN` (recommended for reliable downloads; required if the weight file is in a private repo)
+4. Build and run. The `Dockerfile` serves the API on port **7860** (Spaces default).
+5. Open **`https://<your-username>-<space-name>.hf.space/docs`** for Swagger.
+
+If the Space still reports **out of memory**, try a **CPU upgrade** in the Space hardware settings (paid) or reduce model size.
 
 ## Troubleshooting
 
