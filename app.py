@@ -8,6 +8,17 @@ import inference
 app = FastAPI(title="Plant disease classifier", version="1.0")
 
 
+@app.get("/")
+def root():
+    """Space / load balancers may hit `/`; API lives under `/docs`, `/health`, `/predict`."""
+    return {
+        "service": "plant-disease-classifier",
+        "docs": "/docs",
+        "health": "/health",
+        "predict": "POST /predict (multipart image)",
+    }
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}

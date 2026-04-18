@@ -5,6 +5,9 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
+# Avoid Ultralytics warning about non-writable /root/.config in read-only-ish containers
+ENV YOLO_CONFIG_DIR=/tmp/Ultralytics
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
