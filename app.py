@@ -8,12 +8,6 @@ import inference
 app = FastAPI(title="Plant disease classifier", version="1.0")
 
 
-@app.on_event("startup")
-def startup():
-    # load model once when app starts
-    inference.load_model()
-
-
 @app.get("/health")
 def health():
     return {"status": "ok"}

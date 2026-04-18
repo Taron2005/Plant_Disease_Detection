@@ -6,6 +6,7 @@ import io
 import json
 import os
 import sys
+import threading
 from pathlib import Path
 
 from PIL import Image, ImageOps
@@ -39,6 +40,7 @@ LABEL_MAP_PATH = os.environ.get("YOLO_LABEL_MAP_PATH", "label_map.json")
 
 _model = None
 _class_id_to_name = None
+_load_lock = threading.Lock()
 
 
 def resolve_weights_path() -> str:
@@ -68,12 +70,12 @@ def resolve_weights_path() -> str:
 
     try:
         return hf_hub_download(**download_args)
-    except Exception:
+    except Exception as e:
         raise ValueError(
             f'Could not download "{filename}" from Hugging Face repo "{repo}". '
             "Check repo id and filename (exact match on the Files tab). "
-            "Private repo? Set HF_TOKEN."
-        ) from None
+            "Private repo? Set HF_TOKEN on Render."
+        ) from e
 
 
 def _load_label_map(path: str, model_names) -> dict:
@@ -110,14 +112,17 @@ def load_model(label_map_path: str | None = None):
 
 
 def get_model():
+    # Load on first use so the web server binds its port right away (Render checks for an open port quickly).
+    global _model
     if _model is None:
-        raise RuntimeError("Model not loaded yet — call load_model() at startup")
+        with _load_lock:
+            if _model is None:
+                load_model()
     return _model
 
 
 def get_class_names():
-    if _class_id_to_name is None:
-        raise RuntimeError("Model not loaded yet — call load_model() at startup")
+    get_model()
     return _class_id_to_name
 
 

@@ -48,7 +48,20 @@ Use your real repo id and the **exact** filename from the model’s **Files** ta
 
 ## Deploy (e.g. Render)
 
-Set `HF_MODEL_REPO`, `HF_MODEL_FILENAME`, and `HF_TOKEN` if needed. Start command: `Procfile` or `uvicorn app:app --host 0.0.0.0 --port $PORT`.
+1. **Environment** tab on the Web Service: add **`HF_MODEL_REPO`**, **`HF_MODEL_FILENAME`** (and **`HF_TOKEN`** if the HF repo is private). If these are missing, startup fails — the app has no local weights.
+2. **Start command:** `uvicorn app:app --host 0.0.0.0 --port $PORT` or rely on the **`Procfile`** (uses `$PORT` as Render expects).
+
+### If you see “Application startup failed” on Render
+
+- Scroll **up** in the log for the Python error (not only the last line).
+- **Missing env:** `Set HF_MODEL_REPO...` / ValueError → add variables in the Render **Environment** section and **Clear build cache & deploy** if needed.
+- **404 from Hugging Face:** wrong repo id or filename → match the **Files** tab exactly (e.g. `best YOLO.pt`).
+- **401 / private repo:** add **`HF_TOKEN`** with a read token from Hugging Face.
+- **Out of memory:** PyTorch + YOLO on the smallest free instance can OOM → upgrade instance or use a smaller model later.
+
+### “No open ports detected”
+
+Render looks for a listening port **soon** after start. Loading the model at startup (HF download + PyTorch) can take minutes and **blocks** the server from opening the port. This app **loads the model on the first `/predict` request** instead, so the port opens quickly and deploy checks pass. The **first** prediction may take a while (download + load).
 
 ---
 
