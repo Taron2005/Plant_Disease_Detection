@@ -72,6 +72,9 @@ def resolve_weights_path() -> str:
     download_args = {"repo_id": repo, "filename": filename}
     if revision:
         download_args["revision"] = revision
+    token = (os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN") or "").strip()
+    if token:
+        download_args["token"] = token
 
     try:
         return hf_hub_download(**download_args)
@@ -79,7 +82,7 @@ def resolve_weights_path() -> str:
         raise ValueError(
             f'Could not download "{filename}" from Hugging Face repo "{repo}". '
             "Check repo id and filename (exact match on the Files tab). "
-            "Private repo? Set HF_TOKEN on Render."
+            "Private or gated repo? Set HF_TOKEN in the host environment."
         ) from e
 
 
