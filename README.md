@@ -22,22 +22,55 @@ What it returns: the best disease class plus a short list of top scores (`POST /
 | POST | `/predict` | Upload an image file, get JSON |
 | GET | `/docs` | Swagger UI |
 
-Example response:
+Example response 
 
 ```json
 {
-  "predicted_disease": "late_blight",
+  "predicted_disease": "mosaic",
   "top_predictions": [
-    {"disease": "late_blight", "confidence": 0.91},
-    {"disease": "early_blight", "confidence": 0.04},
-    {"disease": "healthy", "confidence": 0.02}
+    {"disease": "mosaic", "confidence": 0.88},
+    {"disease": "late_blight", "confidence": 0.07},
+    {"disease": "early_blight", "confidence": 0.03}
   ]
 }
 ```
 
 Class names come from the **model** by default. If you add a **`label_map.json`** next to the app (or set `YOLO_LABEL_MAP_PATH`), that file overrides names. Nothing downloads `label_map.json` from the Hub; only the `.pt` file is downloaded from the model repo.
 
-## Files in this repo
+## Reports (`Reports/`)
+
+Written deliverables for the course (methodology, results, ablations, etc.):
+
+| File | What |
+|------|------|
+| `Reports/plant_disease_full_report.pdf` | Full technical write-up |
+| `Reports/plant_disease_technical_report_archived.pdf` | Technical report (archived copy) |
+
+## Notebooks (`notebooks/`)
+
+Jupyter notebooks where **experiments for this task** were run: dataset handling, training runs, and alternative setups (e.g. different model families). They are **not** needed to run the deployed API; they document what was tried and how the final model was produced.
+
+## Git branch `experiments`
+
+- **`main`** — deployment code only (FastAPI, Docker, small repo for Hugging Face Spaces). Pushing `main` to the Space keeps builds fast and under file-size limits.
+- **`experiments`** — same project history, but this branch also tracks **large Colab notebooks** and extra experiment artifacts that would not fit or are not needed on the Space.
+
+To work with the full notebooks locally:
+
+```bash
+git fetch origin
+git checkout experiments
+```
+
+Or copy only the notebooks folder from that branch without switching branches:
+
+```bash
+git checkout experiments -- notebooks/
+```
+
+After editing on `experiments`, push with `git push origin experiments`. Deploy the API by pushing **`main`** to GitHub / your Space remote as usual.
+
+## Files in this repo (API)
 
 | File | What |
 |------|------|
@@ -45,7 +78,8 @@ Class names come from the **model** by default. If you add a **`label_map.json`*
 | `inference.py` | Load weights from Hub, run YOLO, top-k output |
 | `requirements.txt` | Dependencies |
 | `Dockerfile` | For **Hugging Face Spaces** (Docker), port **7860** |
-| `notebooks/` | Extra training notebooks (not needed to run the API) |
+| `Reports/` | PDF reports (see above) |
+| `notebooks/` | Experiment notebooks for the task (see above) |
 
 ## Env vars
 
