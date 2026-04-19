@@ -5,14 +5,14 @@ from PIL import Image
 
 import inference
 
-app = FastAPI(title="Plant disease classifier", version="1.0")
+app = FastAPI(title="Plant Disease API", version="1.0")
 
 
 @app.get("/")
 def root():
-    # HF / proxies sometimes probe "/"; real API is under /docs, /health, /predict
+    # some hosts ping "/" before anything else
     return {
-        "service": "plant-disease-classifier",
+        "service": "plant-disease-api",
         "docs": "/docs",
         "health": "/health",
         "predict": "POST /predict (multipart image)",
@@ -35,7 +35,7 @@ async def predict(file: UploadFile = File(...)):
     except Exception:
         raise HTTPException(status_code=400, detail="Not a valid image file")
 
-    # verify() messes with the buffer for some formats — use a fresh stream for real decode
+    # PIL verify() can leave things in a weird state; open again for real work
     try:
         Image.open(io.BytesIO(raw)).convert("RGB")
     except Exception:

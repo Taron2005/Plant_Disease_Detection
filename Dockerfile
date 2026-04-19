@@ -1,4 +1,4 @@
-# Hugging Face Spaces expects the app on 7860. Set HF_MODEL_* in the Space settings.
+# HF Spaces serves the app on 7860. Set HF_MODEL_REPO (and friends) in the Space settings.
 
 FROM python:3.10-slim
 

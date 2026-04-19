@@ -7,24 +7,22 @@ sdk: docker
 pinned: false
 ---
 
-# Plant disease classifier (API)
+# Plant Disease API
 
-This repo is the **production side** of a plant-disease project: a **FastAPI** service that runs **Ultralytics YOLO in classification mode** and returns a **disease label** (and top‑k scores) for an uploaded leaf or plant image.
+Small **FastAPI** service for plant **disease** labels from a photo. It uses a **YOLO classification** checkpoint (Ultralytics). Weights are **not** in this repo: you point the app at a file on the **Hugging Face Hub** with env vars.
 
-Training used a folder structure where each class came from *plant × disease* combinations; labels were **collapsed to disease-only** so the same pathology maps to one class whether it showed up on different crops. The exported checkpoint (`best.pt` or similar) is **not stored in Git** — it is loaded at runtime from a **Hugging Face model repo** you point to with environment variables.
+What it returns: the best disease class plus a short list of top scores (`POST /predict`). Swagger is at **`/docs`**.
 
-If you only care about **calling the model**, use **`/docs`** on the deployed Space or run locally after setting `HF_MODEL_REPO`. If you care about **how the model was trained**, see `notebooks/Yolo_on_metric_dataset.ipynb` (data prep, splits, metrics).
+## Endpoints
 
-## What you get
+| Method | Path | What it does |
+|--------|------|----------------|
+| GET | `/` | Basic info + where `/docs` is |
+| GET | `/health` | Health check |
+| POST | `/predict` | Upload an image file, get JSON |
+| GET | `/docs` | Swagger UI |
 
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /` | Tiny JSON pointer to `/docs`, `/health`, `/predict` |
-| `GET /health` | Liveness check |
-| `POST /predict` | Multipart file upload → JSON with `predicted_disease` and `top_predictions` |
-| `GET /docs` | Swagger UI (OpenAPI) |
-
-Example JSON from `POST /predict`:
+Example response:
 
 ```json
 {
@@ -37,65 +35,61 @@ Example JSON from `POST /predict`:
 }
 ```
 
-Strings match whatever class names the checkpoint was trained with (and optional `label_map.json` if you ship one next to the app).
+Class names come from the **model** by default. If you add a **`label_map.json`** next to the app (or set `YOLO_LABEL_MAP_PATH`), that file overrides names. Nothing downloads `label_map.json` from the Hub; only the `.pt` file is downloaded from the model repo.
 
-## Repo layout
+## Files in this repo
 
-| Path | Role |
+| File | What |
 |------|------|
-| `app.py` | FastAPI routes, image validation |
-| `inference.py` | Download weights from the Hub, load YOLO once, run top‑k classification |
-| `requirements.txt` | Python deps for the API |
-| `Dockerfile` | Image for **Hugging Face Spaces** (listens on **7860**) |
-| `notebooks/Yolo_on_metric_dataset.ipynb` | Training / evaluation notebook (not required to run the API) |
+| `app.py` | Routes and upload checks |
+| `inference.py` | Load weights from Hub, run YOLO, top-k output |
+| `requirements.txt` | Dependencies |
+| `Dockerfile` | For **Hugging Face Spaces** (Docker), port **7860** |
+| `notebooks/` | Extra training notebooks (not needed to run the API) |
 
-## Environment variables
+## Env vars
 
-| Variable | Required | Notes |
-|----------|----------|--------|
-| `HF_MODEL_REPO` | Yes | Model id, e.g. `YourName/your-weights-repo` |
-| `HF_MODEL_FILENAME` | No | File in that repo (default `best.pt`) |
-| `HF_MODEL_REVISION` | No | Branch or commit |
-| `HF_TOKEN` | For private or gated repos | Also helps with rate limits on downloads |
-| `YOLO_LABEL_MAP_PATH` | No | Override path to `label_map.json` for display names |
+| Variable | Required | Meaning |
+|----------|----------|---------|
+| `HF_MODEL_REPO` | yes | Hub model id, e.g. `user/model` |
+| `HF_MODEL_FILENAME` | no | Weight file name (default `best.pt`) |
+| `HF_MODEL_REVISION` | no | Branch or commit |
+| `HF_TOKEN` | if private | Read token for the Hub |
+| `YOLO_LABEL_MAP_PATH` | no | Path to optional local `label_map.json` |
 
 ## Run locally
 
 ```bash
 pip install -r requirements.txt
-export HF_MODEL_REPO="YourName/your-model"
-export HF_MODEL_FILENAME="best.pt"   # if different
-export HF_TOKEN="hf_..."             # if needed
+export HF_MODEL_REPO="user/model"
+export HF_MODEL_FILENAME="best.pt"
+export HF_TOKEN="hf_..."   # only if the repo is private
 uvicorn app:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Windows (PowerShell):
 
 ```powershell
-$env:HF_MODEL_REPO = "YourName/your-model"
-$env:HF_MODEL_FILENAME = "best.pt"
+$env:HF_MODEL_REPO = "user/model"
 uvicorn app:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Open **http://127.0.0.1:8000/docs**.
+Then open **http://127.0.0.1:8000/docs**.
 
-## Deploy on Hugging Face Spaces (Docker)
+## Hugging Face Space (Docker)
 
-1. Create a Space with the **Docker** SDK (this repo’s README front matter already says `sdk: docker`).
-2. Connect the Space to this GitHub repo **or** push the same tree to the Space’s Git remote.
-3. Under **Settings → Variables and secrets**, add at least `HF_MODEL_REPO`, plus `HF_MODEL_FILENAME` / `HF_TOKEN` as needed.
-4. Build and open **`https://<user>-<space>.hf.space/docs`**.
+1. Create a Space with **Docker** (this README header uses `sdk: docker`).
+2. Point the Space at this repo (GitHub sync or push to the Space git remote).
+3. In **Settings → Variables and secrets**, set `HF_MODEL_REPO` and anything else you need from the table above.
+4. After build, open **`https://<your-username>-<space-name>.hf.space/docs`**.
 
-The `Dockerfile` runs `uvicorn` on port **7860**, which is what Spaces expects. First request may be slow while weights download into the Hub cache inside the container.
+The `Dockerfile` runs uvicorn on **7860**. First request can be slow while weights download.
 
-## Troubleshooting
+## If something breaks
 
-| What you see | What usually fixes it |
-|--------------|------------------------|
-| Missing `HF_MODEL_REPO` | Set it in the Space / host env, not only locally |
-| 404 from Hub | Filename must match the **Files** tab exactly |
-| 401 on download | Set `HF_TOKEN` |
-| Wrong class names | Add a `label_map.json` in the app working dir or set `YOLO_LABEL_MAP_PATH` |
-| OOM on small hardware | Smaller model or a Space with more RAM |
+- **Missing `HF_MODEL_REPO`** — set it in the Space settings, not only on your laptop.
+- **404 from Hub** — filename must match the model repo **Files** tab exactly.
+- **401** — set `HF_TOKEN` for private repos.
+- **Out of memory** — smaller model or a Space with more RAM.
 
-Spaces config reference: [https://huggingface.co/docs/hub/spaces-config-reference](https://huggingface.co/docs/hub/spaces-config-reference)
+Hub Spaces docs: [Spaces config](https://huggingface.co/docs/hub/spaces-config-reference)

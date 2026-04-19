@@ -1,6 +1,6 @@
 import os
 
-# Cheap hosts + PyTorch: cap BLAS threads so one request doesn't spawn a thread army
+# stop numpy/torch from using every CPU thread on small hosts
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 
@@ -15,11 +15,11 @@ from ultralytics import YOLO
 
 
 def _patch_main_for_old_checkpoints():
-    # Old Colab runs pickled PadToSquareResize on __main__ — without this, load can blow up
+    # training notebook pickled a transform on __main__; loading old weights needs this class back
     try:
-        _bilinear = Image.Resampling.BILINEAR
+        bilinear = Image.Resampling.BILINEAR
     except AttributeError:
-        _bilinear = Image.BILINEAR
+        bilinear = Image.BILINEAR
 
     main = sys.modules["__main__"]
     if not hasattr(main, "PadToSquareResize"):
@@ -31,12 +31,13 @@ def _patch_main_for_old_checkpoints():
 
             def __call__(self, img):
                 return ImageOps.pad(
-                    img, (self.size, self.size), color=self.fill, method=_bilinear
+                    img, (self.size, self.size), color=self.fill, method=bilinear
                 )
 
         main.PadToSquareResize = PadToSquareResize
 
 
+# optional: path to a local label_map.json (same folder as the app, or set this env)
 LABEL_MAP_PATH = os.environ.get("YOLO_LABEL_MAP_PATH", "label_map.json")
 
 _model = None
@@ -48,37 +49,34 @@ def resolve_weights_path() -> str:
     repo = os.environ.get("HF_MODEL_REPO", "").strip()
     if not repo:
         raise ValueError(
-            "Set HF_MODEL_REPO to your Hugging Face model id (e.g. User/Model). "
-            "Weights are pulled from the Hub, not bundled in the repo."
+            "Set HF_MODEL_REPO to your Hugging Face model id (example: Name/Model)."
         )
 
     if "your-username" in repo or repo == "your-username/your-model-name":
-        raise ValueError(
-            "HF_MODEL_REPO still looks like a placeholder — use the id from the model page URL."
-        )
+        raise ValueError("HF_MODEL_REPO still looks like a placeholder.")
 
     from huggingface_hub import hf_hub_download
 
     filename = (os.environ.get("HF_MODEL_FILENAME") or "best.pt").strip() or "best.pt"
     revision = (os.environ.get("HF_MODEL_REVISION") or "").strip() or None
 
-    download_args = {"repo_id": repo, "filename": filename}
+    kwargs = {"repo_id": repo, "filename": filename}
     if revision:
-        download_args["revision"] = revision
+        kwargs["revision"] = revision
     token = (os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN") or "").strip()
     if token:
-        download_args["token"] = token
+        kwargs["token"] = token
 
     try:
-        return hf_hub_download(**download_args)
+        return hf_hub_download(**kwargs)
     except Exception as e:
         raise ValueError(
-            f'Could not download "{filename}" from "{repo}". '
-            "Check the Files tab name, branch, and HF_TOKEN if private."
+            f'Could not download "{filename}" from "{repo}". Check the filename on the Hub and HF_TOKEN if the repo is private.'
         ) from e
 
 
-def _load_label_map(path: str, model_names) -> dict:
+def _names_from_optional_label_file(path: str, model_names: dict) -> dict:
+    # checkpoint names unless a local json file is there
     p = Path(path)
     if not p.is_file():
         return dict(model_names)
@@ -89,27 +87,23 @@ def _load_label_map(path: str, model_names) -> dict:
     if isinstance(data, list):
         return {i: str(name) for i, name in enumerate(data)}
     if isinstance(data, dict):
-        out = {}
-        for k, v in data.items():
-            out[int(k)] = str(v)
-        return out
+        return {int(k): str(v) for k, v in data.items()}
 
-    raise ValueError("label_map.json should be a list or dict index -> name")
+    raise ValueError("label_map.json should be a list of names or a dict index -> name")
 
 
-def load_model(label_map_path: str | None = None):
+def load_model():
     global _model, _class_id_to_name
 
     wpath = resolve_weights_path()
-    lpath = label_map_path or LABEL_MAP_PATH
+    map_path = LABEL_MAP_PATH
 
     _patch_main_for_old_checkpoints()
     _model = YOLO(wpath)
-    _class_id_to_name = _load_label_map(lpath, _model.names)
+    _class_id_to_name = _names_from_optional_label_file(map_path, _model.names)
 
 
 def get_model():
-    # Lazy load: uvicorn binds the port before we drag in torch + weights
     global _model
     if _model is None:
         with _load_lock:
@@ -132,7 +126,7 @@ def predict_top_k(image_bytes: bytes, k: int = 3) -> tuple[str, list[dict]]:
     results = model.predict(source=img, verbose=False)
     r = results[0]
     if r.probs is None:
-        raise ValueError("Not a classification checkpoint — need a YOLO cls model (best.pt)")
+        raise ValueError("This checkpoint is not a YOLO classification model.")
 
     probs = r.probs
     idx = probs.top5
