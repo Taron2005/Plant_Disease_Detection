@@ -1,11 +1,9 @@
-# Hugging Face Spaces: web apps listen on port 7860.
-# Set HF_MODEL_REPO, HF_MODEL_FILENAME, and HF_TOKEN in the Space "Variables and secrets".
+# Hugging Face Spaces expects the app on 7860. Set HF_MODEL_* in the Space settings.
 
 FROM python:3.10-slim
 
 WORKDIR /app
 
-# Avoid Ultralytics warning about non-writable /root/.config in read-only-ish containers
 ENV YOLO_CONFIG_DIR=/tmp/Ultralytics
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

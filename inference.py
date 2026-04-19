@@ -1,10 +1,6 @@
-"""
-Local YOLO classification inference. Keeps disease labels only (from the model / label map).
-"""
-
 import os
 
-# Small hosts (e.g. Render free) behave better with fewer BLAS threads
+# Cheap hosts + PyTorch: cap BLAS threads so one request doesn't spawn a thread army
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 
@@ -19,7 +15,7 @@ from ultralytics import YOLO
 
 
 def _patch_main_for_old_checkpoints():
-    # checkpoints trained in Colab pickle __main__.PadToSquareResize — keep same as training
+    # Old Colab runs pickled PadToSquareResize on __main__ — without this, load can blow up
     try:
         _bilinear = Image.Resampling.BILINEAR
     except AttributeError:
@@ -40,7 +36,7 @@ def _patch_main_for_old_checkpoints():
 
         main.PadToSquareResize = PadToSquareResize
 
-# optional: path to label_map.json if you want names different from the checkpoint (file can sit in repo root)
+
 LABEL_MAP_PATH = os.environ.get("YOLO_LABEL_MAP_PATH", "label_map.json")
 
 _model = None
@@ -49,19 +45,16 @@ _load_lock = threading.Lock()
 
 
 def resolve_weights_path() -> str:
-    # Weights always come from Hugging Face (cached under ~/.cache/huggingface/hub after first download).
-
     repo = os.environ.get("HF_MODEL_REPO", "").strip()
     if not repo:
         raise ValueError(
             "Set HF_MODEL_REPO to your Hugging Face model id (e.g. User/Model). "
-            "This app does not load weights from a local folder."
+            "Weights are pulled from the Hub, not bundled in the repo."
         )
 
     if "your-username" in repo or repo == "your-username/your-model-name":
         raise ValueError(
-            "HF_MODEL_REPO still looks like the README placeholder. "
-            'Use your real id from the model page URL (e.g. "SomeUser/SomeModel").'
+            "HF_MODEL_REPO still looks like a placeholder — use the id from the model page URL."
         )
 
     from huggingface_hub import hf_hub_download
@@ -80,14 +73,12 @@ def resolve_weights_path() -> str:
         return hf_hub_download(**download_args)
     except Exception as e:
         raise ValueError(
-            f'Could not download "{filename}" from Hugging Face repo "{repo}". '
-            "Check repo id and filename (exact match on the Files tab). "
-            "Private or gated repo? Set HF_TOKEN in the host environment."
+            f'Could not download "{filename}" from "{repo}". '
+            "Check the Files tab name, branch, and HF_TOKEN if private."
         ) from e
 
 
 def _load_label_map(path: str, model_names) -> dict:
-    """Build index -> disease name. Prefer label_map.json if present."""
     p = Path(path)
     if not p.is_file():
         return dict(model_names)
@@ -98,17 +89,15 @@ def _load_label_map(path: str, model_names) -> dict:
     if isinstance(data, list):
         return {i: str(name) for i, name in enumerate(data)}
     if isinstance(data, dict):
-        # keys might be strings "0", "1", ...
         out = {}
         for k, v in data.items():
             out[int(k)] = str(v)
         return out
 
-    raise ValueError("label_map.json should be a list or a dict of index -> name")
+    raise ValueError("label_map.json should be a list or dict index -> name")
 
 
 def load_model(label_map_path: str | None = None):
-    """Load weights once and set up class names."""
     global _model, _class_id_to_name
 
     wpath = resolve_weights_path()
@@ -120,7 +109,7 @@ def load_model(label_map_path: str | None = None):
 
 
 def get_model():
-    # Load on first use so the web server binds its port right away (Render checks for an open port quickly).
+    # Lazy load: uvicorn binds the port before we drag in torch + weights
     global _model
     if _model is None:
         with _load_lock:
@@ -135,23 +124,17 @@ def get_class_names():
 
 
 def predict_top_k(image_bytes: bytes, k: int = 3) -> tuple[str, list[dict]]:
-    """
-    Run inference on raw image bytes.
-    Returns (top_label, top_k list of {disease, confidence}).
-    """
     model = get_model()
     names = get_class_names()
 
-    # PIL verifies we have a real image
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
     results = model.predict(source=img, verbose=False)
     r = results[0]
     if r.probs is None:
-        raise ValueError("Model output is not classification — check that best.pt is a cls model")
+        raise ValueError("Not a classification checkpoint — need a YOLO cls model (best.pt)")
 
     probs = r.probs
-    # top5 is available on classification probs in ultralytics
     idx = probs.top5
     conf = probs.top5conf
     if hasattr(idx, "tolist"):

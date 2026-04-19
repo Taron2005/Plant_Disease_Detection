@@ -10,7 +10,7 @@ app = FastAPI(title="Plant disease classifier", version="1.0")
 
 @app.get("/")
 def root():
-    """Space / load balancers may hit `/`; API lives under `/docs`, `/health`, `/predict`."""
+    # HF / proxies sometimes probe "/"; real API is under /docs, /health, /predict
     return {
         "service": "plant-disease-classifier",
         "docs": "/docs",
@@ -30,13 +30,12 @@ async def predict(file: UploadFile = File(...)):
     if not raw:
         raise HTTPException(status_code=400, detail="Empty file")
 
-    # make sure uploaded file is an image
     try:
         Image.open(io.BytesIO(raw)).verify()
     except Exception:
         raise HTTPException(status_code=400, detail="Not a valid image file")
 
-    # reopen after verify() — verify() leaves the buffer in a bad state for some formats
+    # verify() messes with the buffer for some formats — use a fresh stream for real decode
     try:
         Image.open(io.BytesIO(raw)).convert("RGB")
     except Exception:
