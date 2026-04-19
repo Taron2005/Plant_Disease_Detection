@@ -37,25 +37,26 @@ Example response:
 
 Class names come from the **model** by default. If you add a **`label_map.json`** next to the app (or set `YOLO_LABEL_MAP_PATH`), that file overrides names. Nothing downloads `label_map.json` from the Hub; only the `.pt` file is downloaded from the model repo.
 
-## Reports (`Reports/`)
+## Reports (PDFs on GitHub)
 
-Written deliverables for the course (methodology, results, ablations, etc.):
+This Space git copy **does not** include PDFs (Hub storage rules). The course reports are on **GitHub** (`main` branch):
+
+**https://github.com/Taron2005/Plant_Disease_Detection/tree/main/Reports**
 
 | File | What |
 |------|------|
-| `Reports/plant_disease_full_report.pdf` | Full technical write-up |
-| `Reports/plant_disease_technical_report_archived.pdf` | Technical report (archived copy) |
-
-The PDFs live **in this GitHub repo only** (this `main` branch). The Hugging Face Space git remote does **not** store them—Hub policy blocks those files there—so deployment uses branch **`hf-deploy`** (same API code, no `Reports/` folder). Push the Space with: `git push hf hf-deploy:main`.
+| `plant_disease_full_report.pdf` | Full technical write-up |
+| `plant_disease_technical_report_archived.pdf` | Technical report (archived copy) |
 
 ## Notebooks (`notebooks/`)
 
 Jupyter notebooks where **experiments for this task** were run: dataset handling, training runs, and alternative setups (e.g. different model families). They are **not** needed to run the deployed API; they document what was tried and how the final model was produced.
 
-## Git branch `experiments`
+## Git branches
 
-- **`main`** — deployment code only (FastAPI, Docker, small repo for Hugging Face Spaces). Pushing `main` to the Space keeps builds fast and under file-size limits.
-- **`experiments`** — same project history, but this branch also tracks **large Colab notebooks** and extra experiment artifacts that would not fit or are not needed on the Space.
+- **`main` (GitHub)** — full project: API code + `Reports/` PDFs + everything else.
+- **`hf-deploy`** — **this** branch: same API as `main`, but **no** `Reports/` folder, so pushes to the Space git succeed.
+- **`experiments`** — large Colab notebooks and extra experiment artifacts (see GitHub).
 
 To work with the full notebooks locally:
 
@@ -70,7 +71,7 @@ Or copy only the notebooks folder from that branch without switching branches:
 git checkout experiments -- notebooks/
 ```
 
-After editing on `experiments`, push with `git push origin experiments`. Push **`main`** to GitHub as usual. For the Hugging Face Space, push branch **`hf-deploy`** to the `hf` remote (see Reports section above)—not `main`, so PDFs never go to the Space git.
+After editing on `experiments`, run `git push origin experiments`. To update **this Space** after you change code on `main`: merge or cherry-pick into `hf-deploy`, drop `Reports/` if present, then run `git push hf hf-deploy:main`.
 
 ## Files in this repo (API)
 
@@ -80,7 +81,7 @@ After editing on `experiments`, push with `git push origin experiments`. Push **
 | `inference.py` | Load weights from Hub, run YOLO, top-k output |
 | `requirements.txt` | Dependencies |
 | `Dockerfile` | For **Hugging Face Spaces** (Docker), port **7860** |
-| `Reports/` | PDF reports (see above) |
+| `Reports/` | (GitHub `main` only) PDF reports — link in section above |
 | `notebooks/` | Experiment notebooks for the task (see above) |
 
 ## Env vars
