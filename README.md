@@ -46,16 +46,21 @@ Written deliverables for the course (methodology, results, ablations, etc.):
 | `Reports/plant_disease_full_report.pdf` | Full technical write-up |
 | `Reports/plant_disease_technical_report_archived.pdf` | Technical report (archived copy) |
 
-The PDFs live **in this GitHub repo only** (this `main` branch). The Hugging Face Space git remote does **not** store them—Hub policy blocks those files there—so deployment uses branch **`hf-deploy`** (same API code, no `Reports/` folder). Push the Space with: `git push hf hf-deploy:main`.
+The PDFs live **in this GitHub repo only** (this `main` branch). The Hugging Face Space git remote **cannot** store those PDFs (Hub rejects them), and it also rejects pushes that still contain PDFs **anywhere in git history**. So the Space is updated from branch **`hf-space-clean`**: a **single-commit** copy of the API (no `Reports/`, no old blobs). Push with:
+
+`git push hf hf-space-clean:main --force`
+
+Branches **`hf-deploy`** and **`hf-space-clean`** on GitHub mirror that deploy story; day-to-day work stays on **`main`**.
 
 ## Notebooks (`notebooks/`)
 
 Jupyter notebooks where **experiments for this task** were run: dataset handling, training runs, and alternative setups (e.g. different model families). They are **not** needed to run the deployed API; they document what was tried and how the final model was produced.
 
-## Git branch `experiments`
+## Git branches
 
-- **`main`** — deployment code only (FastAPI, Docker, small repo for Hugging Face Spaces). Pushing `main` to the Space keeps builds fast and under file-size limits.
-- **`experiments`** — same project history, but this branch also tracks **large Colab notebooks** and extra experiment artifacts that would not fit or are not needed on the Space.
+- **`main`** — full project on GitHub (API + `Reports/` PDFs + layout).
+- **`experiments`** — large Colab notebooks and extra experiment artifacts.
+- **`hf-deploy` / `hf-space-clean`** — used only to ship the API to the Hugging Face Space without PDFs or messy history (see Reports section).
 
 To work with the full notebooks locally:
 
@@ -70,7 +75,7 @@ Or copy only the notebooks folder from that branch without switching branches:
 git checkout experiments -- notebooks/
 ```
 
-After editing on `experiments`, push with `git push origin experiments`. Push **`main`** to GitHub as usual. For the Hugging Face Space, push branch **`hf-deploy`** to the `hf` remote (see Reports section above)—not `main`, so PDFs never go to the Space git.
+After editing on `experiments`, run `git push origin experiments`. Push **`main`** to GitHub with `git push origin main`. To refresh the Space, rebuild **`hf-space-clean`** from **`hf-deploy`** (merge `main` into `hf-deploy`, delete `Reports/`, then recreate the orphan single-commit branch) and push to `hf` as above—or ask for a short checklist if you update the API often.
 
 ## Files in this repo (API)
 
@@ -115,7 +120,7 @@ Then open **http://127.0.0.1:8000/docs**.
 ## Hugging Face Space (Docker)
 
 1. Create a Space with **Docker** (this README header uses `sdk: docker`).
-2. Connect the Space to this repo’s **`hf-deploy`** branch (or push `hf-deploy` to the Space git remote as `main`; see Reports section).
+2. Point the Space git remote at branch **`hf-space-clean`** (pushed as `main` on Hugging Face), or connect GitHub to the **`hf-space-clean`** branch—not **`main`**, or the Hub will try to pull PDF history and fail.
 3. In **Settings → Variables and secrets**, set `HF_MODEL_REPO` and anything else you need from the table above.
 4. After build, open **`https://<your-username>-<space-name>.hf.space/docs`**.
 
