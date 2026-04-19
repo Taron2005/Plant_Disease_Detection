@@ -123,6 +123,7 @@ Then open **http://127.0.0.1:8000/docs**.
 2. Point the Space git remote at branch **`hf-space-clean`** (pushed as `main` on Hugging Face), or connect GitHub to the **`hf-space-clean`** branch—not **`main`**, or the Hub will try to pull PDF history and fail.
 3. In **Settings → Variables and secrets**, set `HF_MODEL_REPO` and anything else you need from the table above.
 4. After build, open **`https://<your-username>-<space-name>.hf.space/docs`**.
+5. **`https://taronbabayan-plant-disease-api.hf.space/ `** (this is my deployed link)
 
 The `Dockerfile` runs uvicorn on **7860**. First request can be slow while weights download.
 
