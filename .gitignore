@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+
+# Jupyter
+.ipynb_checkpoints/
+# Large Colab-style notebooks (HF Space git rejects >10 MiB per file)
+notebooks/*.ipynb
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.cursor/
+
+# Hugging Face cache (local download cache)
+.cache/
+
+# Model weights (host on Hugging Face; do not commit)
+*.pt
+*.pth
