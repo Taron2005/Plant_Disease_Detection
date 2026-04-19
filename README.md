@@ -22,7 +22,7 @@ What it returns: the best disease class plus a short list of top scores (`POST /
 | POST | `/predict` | Upload an image file, get JSON |
 | GET | `/docs` | Swagger UI |
 
-Example response 
+Example response:
 
 ```json
 {
@@ -46,6 +46,8 @@ Written deliverables for the course (methodology, results, ablations, etc.):
 | `Reports/plant_disease_full_report.pdf` | Full technical write-up |
 | `Reports/plant_disease_technical_report_archived.pdf` | Technical report (archived copy) |
 
+The PDFs live **in this GitHub repo only** (this `main` branch). The Hugging Face Space git remote does **not** store them—Hub policy blocks those files there—so deployment uses branch **`hf-deploy`** (same API code, no `Reports/` folder). Push the Space with: `git push hf hf-deploy:main`.
+
 ## Notebooks (`notebooks/`)
 
 Jupyter notebooks where **experiments for this task** were run: dataset handling, training runs, and alternative setups (e.g. different model families). They are **not** needed to run the deployed API; they document what was tried and how the final model was produced.
@@ -68,7 +70,7 @@ Or copy only the notebooks folder from that branch without switching branches:
 git checkout experiments -- notebooks/
 ```
 
-After editing on `experiments`, push with `git push origin experiments`. Deploy the API by pushing **`main`** to GitHub / your Space remote as usual.
+After editing on `experiments`, push with `git push origin experiments`. Push **`main`** to GitHub as usual. For the Hugging Face Space, push branch **`hf-deploy`** to the `hf` remote (see Reports section above)—not `main`, so PDFs never go to the Space git.
 
 ## Files in this repo (API)
 
@@ -113,7 +115,7 @@ Then open **http://127.0.0.1:8000/docs**.
 ## Hugging Face Space (Docker)
 
 1. Create a Space with **Docker** (this README header uses `sdk: docker`).
-2. Point the Space at this repo (GitHub sync or push to the Space git remote).
+2. Connect the Space to this repo’s **`hf-deploy`** branch (or push `hf-deploy` to the Space git remote as `main`; see Reports section).
 3. In **Settings → Variables and secrets**, set `HF_MODEL_REPO` and anything else you need from the table above.
 4. After build, open **`https://<your-username>-<space-name>.hf.space/docs`**.
 

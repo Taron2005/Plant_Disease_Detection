@@ -10,3 +10,6 @@ __pycache__
 # Training lives in the Git repo; the API image doesn't need it
 notebooks/
 *.ipynb
+
+# PDF reports (GitHub only); not needed in the container
+Reports/
